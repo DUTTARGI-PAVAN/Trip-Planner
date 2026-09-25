@@ -10,18 +10,17 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
  * Sends prompt to backend with request timeout and cancellation support.
  *
  * @param {string} prompt - User trip prompt
- * @param {string} [startDate=''] - Optional start date
  * @param {object} [options={}] - Request options
  * @param {AbortSignal} [options.signal] - External abort signal for user cancellation
  * @param {number} [options.timeoutMs=50000] - Request timeout in milliseconds (default 50s)
  * @returns {Promise<object>} Parsed JSON itinerary from backend
  */
-export async function generateItinerary(prompt, startDate = '', options = {}) {
-  const { signal: externalSignal, timeoutMs = 50000 } = options;
+export async function generateItinerary(prompt, options = {}) {
+  // Support options passed as second or third argument for backwards compatibility
+  const resolvedOptions = (typeof options === 'object' && options !== null) ? options : {};
+  const { signal: externalSignal, timeoutMs = 50000 } = resolvedOptions;
 
-  const finalPrompt = startDate
-    ? `Trip plan: ${prompt}. The trip starts on ${startDate}.`
-    : `Trip plan: ${prompt}`;
+  const finalPrompt = `Trip plan: ${prompt}`;
 
   // Create an internal timeout controller
   const timeoutController = new AbortController();

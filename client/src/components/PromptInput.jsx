@@ -18,14 +18,12 @@ const SUGGESTIONS = {
 
 /**
  * Free-form prompt input component.
- * Supports text input, personalized suggestions (Solo vs Group), date selection,
+ * Supports text input, personalized suggestions (Solo vs Group),
  * Enter to submit, Shift+Enter for newlines, and request cancellation.
  */
 export function PromptInput({
   prompt,
   setPrompt,
-  startDate,
-  setStartDate,
   travelerType = 'solo',
   onToggleTravelerType,
   onSubmit,
@@ -113,27 +111,7 @@ export function PromptInput({
       {/* Controls Bar */}
       <div className="hero-controls">
         <div className="controls-left">
-          <div className="date-input-wrapper">
-            <span className="date-label">📅 Start Date</span>
-            <input
-              type="date"
-              className="date-picker-input"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              aria-label="Trip start date"
-              disabled={loading}
-            />
-            {startDate && !loading && (
-              <button
-                type="button"
-                className="clear-date-btn"
-                onClick={() => setStartDate("")}
-                title="Clear date"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+          <span className="prompt-guide-text">💡 Feel free to specify days, budget, or preferred activities.</span>
         </div>
 
         <div className="controls-right">

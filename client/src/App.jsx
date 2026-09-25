@@ -28,10 +28,6 @@ export default function App() {
     return localStorage.getItem('trip-planner-saved-prompt') || '';
   });
 
-  const [startDate, setStartDate] = useState(() => {
-    return localStorage.getItem('trip-planner-saved-start-date') || '';
-  });
-
   const [tripData, setTripData] = useState(() => {
     try {
       const saved = localStorage.getItem('trip-planner-saved-trip');
@@ -69,10 +65,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('trip-planner-saved-prompt', prompt);
   }, [prompt]);
-
-  useEffect(() => {
-    localStorage.setItem('trip-planner-saved-start-date', startDate);
-  }, [startDate]);
 
   useEffect(() => {
     if (userName) {
@@ -121,8 +113,13 @@ export default function App() {
     setLoading(false);
   };
 
-  const handlePlanTrip = async () => {
-    if (!prompt.trim()) return;
+  const handlePlanTrip = async (customPrompt) => {
+    const targetPrompt = typeof customPrompt === 'string' ? customPrompt : prompt;
+    if (!targetPrompt.trim()) return;
+
+    if (typeof customPrompt === 'string') {
+      setPrompt(customPrompt);
+    }
 
     // Abort any prior in-flight request
     if (abortControllerRef.current) {
@@ -138,9 +135,9 @@ export default function App() {
 
     try {
       // Include traveler type context in the prompt for even smarter AI plans
-      const contextualPrompt = `[Traveler Type: ${travelerType === 'group' ? 'Group / Friends' : 'Solo Traveler'}] ${prompt}`;
+      const contextualPrompt = `[Traveler Type: ${travelerType === 'group' ? 'Group / Friends' : 'Solo Traveler'}] ${targetPrompt}`;
 
-      const rawData = await generateItinerary(contextualPrompt, startDate, {
+      const rawData = await generateItinerary(contextualPrompt, {
         signal: controller.signal,
         timeoutMs: 50000,
       });
@@ -186,7 +183,6 @@ export default function App() {
     }
     setTripData(null);
     setPrompt("");
-    setStartDate("");
     setError(null);
     setActiveDayIndex(null);
     localStorage.removeItem('trip-planner-saved-trip');
@@ -263,33 +259,32 @@ export default function App() {
           Where would you like to <span className="gradient-text">explore next?</span>
         </h1>
         <p className="hero-subtext">
-          Describe your dream getaway, choose a start date, and let AI build your day-by-day custom schedule.
+          Describe your dream getaway and let AI build your day-by-day custom schedule.
         </p>
 
         {/* Free-form Input Component */}
         <PromptInput
           prompt={prompt}
           setPrompt={setPrompt}
-          startDate={startDate}
-          setStartDate={setStartDate}
           travelerType={travelerType}
           onToggleTravelerType={handleToggleTravelerType}
-          onSubmit={handlePlanTrip}
+          onSubmit={() => handlePlanTrip()}
           onCancel={handleCancelRequest}
           loading={loading}
         />
       </section>
 
       {/* Shared Error State Banner */}
-      <ErrorState error={error} onRetry={handlePlanTrip} />
+      <ErrorState error={error} onRetry={() => handlePlanTrip()} />
 
-      {/* 3. Results Section */}
+      {/* 3. Results / Suggested Section */}
       <ResultView
         tripData={tripData}
         loading={loading}
-        startDate={startDate}
+        travelerType={travelerType}
         onSelectDay={(idx) => setActiveDayIndex(idx)}
         onResetTrip={handleResetTrip}
+        onSelectSuggestedPlan={(planPrompt) => handlePlanTrip(planPrompt)}
       />
 
       {/* 4. Interactive Day Modal (Expand / Reorder / Delete Stops) */}
