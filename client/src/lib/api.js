@@ -1,35 +1,84 @@
 /**
  * API client module
- * Handles communication with the backend proxy.
+ * Handles communication with the backend proxy with support for cancellation and timeouts.
  * The client NEVER calls the LLM provider directly to keep the API key safe.
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-export async function generateItinerary(prompt, startDate = '') {
+/**
+ * Sends prompt to backend with request timeout and cancellation support.
+ *
+ * @param {string} prompt - User trip prompt
+ * @param {string} [startDate=''] - Optional start date
+ * @param {object} [options={}] - Request options
+ * @param {AbortSignal} [options.signal] - External abort signal for user cancellation
+ * @param {number} [options.timeoutMs=50000] - Request timeout in milliseconds (default 50s)
+ * @returns {Promise<object>} Parsed JSON itinerary from backend
+ */
+export async function generateItinerary(prompt, startDate = '', options = {}) {
+  const { signal: externalSignal, timeoutMs = 50000 } = options;
+
   const finalPrompt = startDate
     ? `Trip plan: ${prompt}. The trip starts on ${startDate}.`
     : `Trip plan: ${prompt}`;
 
-  const response = await fetch(`${API_BASE_URL}/api/generate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ prompt: finalPrompt }),
-  });
+  // Create an internal timeout controller
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => {
+    timeoutController.abort(new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds.`));
+  }, timeoutMs);
 
-  if (!response.ok) {
-    let errorMessage = `Server error (${response.status})`;
-    try {
-      const errorData = await response.json();
-      if (errorData?.error) errorMessage = errorData.error;
-    } catch {
-      // Fallback to generic message if JSON parsing fails
+  // Combine external cancellation signal and timeout signal
+  let activeSignal = timeoutController.signal;
+  if (externalSignal) {
+    if (typeof AbortSignal.any === 'function') {
+      activeSignal = AbortSignal.any([externalSignal, timeoutController.signal]);
+    } else {
+      // Fallback for older browsers
+      externalSignal.addEventListener('abort', () => timeoutController.abort(externalSignal.reason), { once: true });
     }
-    throw new Error(errorMessage);
   }
 
-  const rawData = await response.json();
-  return rawData;
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt: finalPrompt }),
+      signal: activeSignal,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Server error (${response.status})`;
+      try {
+        const errorData = await response.json();
+        if (errorData?.error) errorMessage = errorData.error;
+      } catch {
+        // Fallback to HTTP status text if JSON parsing fails
+        if (response.statusText) errorMessage = `${response.statusText} (${response.status})`;
+      }
+      const err = new Error(errorMessage);
+      err.status = response.status;
+      throw err;
+    }
+
+    const rawData = await response.json();
+    return rawData;
+  } catch (err) {
+    if (activeSignal.aborted) {
+      if (externalSignal?.aborted) {
+        const abortErr = new Error('Request cancelled by user.');
+        abortErr.name = 'AbortError';
+        throw abortErr;
+      }
+      const timeoutErr = new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds. Please try again.`);
+      timeoutErr.name = 'TimeoutError';
+      throw timeoutErr;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
