@@ -58,28 +58,46 @@ app.post('/api/generate', async (req, res) => {
             return res.status(400).json({ error: 'Prompt is required' });
         }
 
-        // We use gemini-1.5-flash as it is fast and excellent at JSON
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: responseSchema,
-            }
-        });
+        const candidateModels = [
+            process.env.GEMINI_MODEL,
+            "gemini-3.5-flash-lite",
+            "gemini-3.8-flash",
+            "gemini-3.7-flash"
+        ].filter(Boolean);
 
         const systemInstruction = "You are an expert travel planner. Create a logical, practical daily itinerary based on the user's request. Generate unique UUIDs for every stop id.";
+        let lastError = null;
+        let jsonResponse = null;
 
-        const result = await model.generateContent(`${systemInstruction}\n\nUser request: ${prompt}`);
-        const responseText = result.response.text();
+        for (const modelName of candidateModels) {
+            try {
+                const model = genAI.getGenerativeModel({
+                    model: modelName,
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: responseSchema,
+                    }
+                });
 
-        // Parse it to ensure it's valid JSON before sending to client
-        const jsonResponse = JSON.parse(responseText);
+                const result = await model.generateContent(`${systemInstruction}\n\nUser request: ${prompt}`);
+                const responseText = result.response.text();
+                jsonResponse = JSON.parse(responseText);
+                break; // Successfully generated and parsed
+            } catch (err) {
+                console.warn(`Attempt with ${modelName} failed:`, err.message);
+                lastError = err;
+            }
+        }
+
+        if (!jsonResponse) {
+            throw lastError || new Error("Failed to generate response with available models");
+        }
 
         res.json(jsonResponse);
 
     } catch (error) {
         console.error("AI Generation Error:", error);
-        res.status(500).json({ error: 'Failed to generate itinerary. Please try again.' });
+        res.status(500).json({ error: error.message || 'Failed to generate itinerary. Please try again.' });
     }
 });
 
