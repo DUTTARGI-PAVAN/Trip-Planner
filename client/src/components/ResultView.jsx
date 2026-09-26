@@ -1,93 +1,49 @@
 import React from 'react';
 import { LoadingState } from './LoadingState';
 
-// Curated suggested plans with high-resolution photography and rich details
-export const FEATURED_PLANS = {
-  solo: [
-    {
-      id: "solo-kyoto",
-      destination: "Kyoto, Japan",
-      duration: "4 Days",
-      title: "Kyoto Solo Photography & Zen Retreat",
-      desc: "Wander through quiet morning bamboo groves, historic vermilion torii gates, traditional tea houses, and authentic hidden ramen bars.",
-      image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&auto=format&fit=crop&q=80",
-      tags: ["Zen Temples", "Street Photography", "Ramen", "Tea Ceremony"],
-      prompt: "4 days solo wandering in Kyoto exploring quiet morning shrines, bamboo groves, and hidden ramen bars"
-    },
-    {
-      id: "solo-bali",
-      destination: "Bali, Indonesia",
-      duration: "5 Days",
-      title: "Bali Solo Backpacker & Hidden Cafes",
-      desc: "Discover Ubud's lush waterfalls, serene rice terraces, yoga retreats, vibrant co-working cafes, and coastal sunsets in Canggu.",
-      image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&auto=format&fit=crop&q=80",
-      tags: ["Yoga & Surf", "Waterfalls", "Rice Terraces", "Cafe Culture"],
-      prompt: "5 days solo retreat in Ubud and Canggu with yoga classes, co-working cafes, and scenic waterfalls"
-    },
-    {
-      id: "solo-alps",
-      destination: "Swiss Alps, Switzerland",
-      duration: "3 Days",
-      title: "Swiss Alps Alpine Trek & Panoramas",
-      desc: "Hike world-class trails in Interlaken and Lauterbrunnen, ride scenic cogwheel trains, stay in cozy hostels, and savor Swiss fondue.",
-      image: "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800&auto=format&fit=crop&q=80",
-      tags: ["Mountain Trekking", "Alpine Lakes", "Scenic Trains", "Fondue"],
-      prompt: "3 days solo trekking in Interlaken and Lauterbrunnen with mountain hostels, fondue, and panoramic trails"
-    },
-    {
-      id: "solo-paris",
-      destination: "Paris, France",
-      duration: "3 Days",
-      title: "Paris Art, Bakeries & Culture Walk",
-      desc: "Immerse in the Louvre, Montmartre cobblestones, bohemian bookshops along the Seine, and sunset views from quaint Parisian bistros.",
-      image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop&q=80",
-      tags: ["Art Galleries", "Pastries & Cafes", "Montmartre", "Architecture"],
-      prompt: "3 days solo cultural journey in Paris visiting the Louvre, Montmartre art studios, and historic bakeries"
-    },
-  ],
-  group: [
-    {
-      id: "group-goa",
-      destination: "Goa, India",
-      duration: "4 Days",
-      title: "Goa Beach Villa & Nightlife Fiesta",
-      desc: "Book a beachside villa, rent scooters for coastal cruising, try thrilling water sports, and party at sunset shacks with your crew.",
-      image: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop&q=80",
-      tags: ["Private Villa", "Water Sports", "Beach Parties", "Seafood Shacks"],
-      prompt: "4 days group party getaway to Goa with private beach shacks, sunset cruises, water sports, and seaside clubs"
-    },
-    {
-      id: "group-tokyo",
-      destination: "Tokyo, Japan",
-      duration: "5 Days",
-      title: "Tokyo Tech, Gaming & Izakaya Safari",
-      desc: "Explore Akihabara VR arcades, teamLab immersive lights, Shibuya sky decks, singing karaoke lounges, and shared yakitori feasts.",
-      image: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800&auto=format&fit=crop&q=80",
-      tags: ["Arcades & Gaming", "Karaoke", "teamLab Digital", "Izakayas"],
-      prompt: "5 days group exploration in Tokyo hitting Akihabara arcades, teamLab digital art, Shibuya crossings, and izakayas"
-    },
-    {
-      id: "group-manali",
-      destination: "Manali, Himalayas",
-      duration: "5 Days",
-      title: "Manali Friends Road Trip & Adventure",
-      desc: "Epic mountain road trip across Solang Valley featuring river rafting, campfire bonfires, paragliding, and lively Old Manali cafes.",
-      image: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800&auto=format&fit=crop&q=80",
-      tags: ["River Rafting", "Bonfire Nights", "Paragliding", "Mountain Cafes"],
-      prompt: "5 days scenic group road trip to Manali and Solang Valley with river rafting, bonfires, and mountain cafes"
-    },
-    {
-      id: "group-rome",
-      destination: "Rome & Florence, Italy",
-      duration: "4 Days",
-      title: "Italian Heritage & Vineyard Tour",
-      desc: "Skip lines at the Colosseum, embark on a scenic Tuscan vineyard day trip, and share authentic pizza and wine dinners with friends.",
-      image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800&auto=format&fit=crop&q=80",
-      tags: ["Colosseum Tour", "Wine Tasting", "Pizza & Pasta", "Florence Duomo"],
-      prompt: "4 days group tour of Rome and Florence with Colosseum entry, shared pasta feasts, and vineyard tastings"
-    },
-  ],
-};
+// Four curated popular suggested plans with high-resolution photography
+export const FEATURED_PLANS = [
+  {
+    id: "plan-kyoto",
+    destination: "Kyoto, Japan",
+    duration: "4 Days",
+    title: "Kyoto Photography & Zen Retreat",
+    desc: "Wander through quiet morning bamboo groves, historic vermilion torii gates, traditional tea houses, and authentic hidden ramen bars.",
+    image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&auto=format&fit=crop&q=80",
+    tags: ["Zen Temples", "Photography", "Ramen", "Tea Ceremony"],
+    prompt: "4 days wandering in Kyoto exploring quiet morning shrines, bamboo groves, and hidden ramen bars"
+  },
+  {
+    id: "plan-bali",
+    destination: "Bali, Indonesia",
+    duration: "5 Days",
+    title: "Bali Tropical Retreat & Waterfalls",
+    desc: "Discover Ubud's lush waterfalls, serene rice terraces, yoga retreats, vibrant cafes, and coastal sunsets in Canggu.",
+    image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800&auto=format&fit=crop&q=80",
+    tags: ["Yoga & Surf", "Waterfalls", "Rice Terraces", "Cafe Culture"],
+    prompt: "5 days retreat in Ubud and Canggu with yoga classes, co-working cafes, and scenic waterfalls"
+  },
+  {
+    id: "plan-alps",
+    destination: "Swiss Alps, Switzerland",
+    duration: "3 Days",
+    title: "Swiss Alps Alpine Trek & Panoramas",
+    desc: "Hike world-class trails in Interlaken and Lauterbrunnen, ride scenic cogwheel trains, stay in cozy chalets, and savor Swiss fondue.",
+    image: "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800&auto=format&fit=crop&q=80",
+    tags: ["Mountain Trekking", "Alpine Lakes", "Scenic Trains", "Fondue"],
+    prompt: "3 days trekking in Interlaken and Lauterbrunnen with mountain hostels, fondue, and panoramic trails"
+  },
+  {
+    id: "plan-paris",
+    destination: "Paris, France",
+    duration: "3 Days",
+    title: "Paris Art, Bakeries & Culture Walk",
+    desc: "Immerse in the Louvre, Montmartre cobblestones, bohemian bookshops along the Seine, and sunset views from quaint Parisian bistros.",
+    image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop&q=80",
+    tags: ["Art Galleries", "Pastries & Cafes", "Montmartre", "Architecture"],
+    prompt: "3 days cultural journey in Paris visiting the Louvre, Montmartre art studios, and historic bakeries"
+  },
+];
 
 /**
  * ResultView component
@@ -96,7 +52,6 @@ export const FEATURED_PLANS = {
 export function ResultView({
   tripData,
   loading,
-  travelerType = 'solo',
   onSelectDay,
   onResetTrip,
   onSelectSuggestedPlan,
@@ -106,7 +61,7 @@ export function ResultView({
     0
   ) || 0;
 
-  const currentSuggestions = FEATURED_PLANS[travelerType] || FEATURED_PLANS.solo;
+  const currentSuggestions = FEATURED_PLANS;
 
   return (
     <>
@@ -134,7 +89,7 @@ export function ResultView({
           <div>
             <div className="section-badge-row">
               <span className="section-type-pill">
-                {tripData ? "✨ GENERATED PLAN" : (travelerType === 'group' ? "👥 GROUP INSPIRATION" : "🎒 SOLO INSPIRATION")}
+                {tripData ? "✨ GENERATED PLAN" : "✨ POPULAR INSPIRATION"}
               </span>
             </div>
             <h2 className="section-title">
@@ -143,7 +98,7 @@ export function ResultView({
             <p className="section-subtitle">
               {tripData
                 ? `Detailed schedule for ${tripData.destination}. Click any card to review, reorder, or customize stops.`
-                : `Explore popular handpicked ${travelerType === 'group' ? 'group getaways' : 'solo trips'}. Click any card to generate the full AI schedule instantly.`}
+                : "Explore popular handpicked dream itineraries. Click any card to generate the full AI schedule instantly."}
             </p>
           </div>
           {tripData && (

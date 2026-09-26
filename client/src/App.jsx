@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import './App.css';
 import { generateItinerary } from './lib/api';
 import { validateItinerary } from './lib/validateResult';
@@ -6,23 +6,59 @@ import { PromptInput } from './components/PromptInput';
 import { ResultView } from './components/ResultView';
 import { ErrorState } from './components/ErrorState';
 import { DayDetailModal } from './components/DayDetailModal';
-import { UserProfileModal } from './components/UserProfileModal';
 import logoImg from './assets/logo.png';
 
+/**
+ * Generates an interactive, warm, time-of-day aware guide greeting for the traveler.
+ * Evaluates once on mount per app load.
+ */
+function getGuideGreeting() {
+  const hour = new Date().getHours();
+  let timeOfDay = 'afternoon';
+  if (hour >= 5 && hour < 12) {
+    timeOfDay = 'morning';
+  } else if (hour >= 12 && hour < 17) {
+    timeOfDay = 'afternoon';
+  } else if (hour >= 17 && hour < 22) {
+    timeOfDay = 'evening';
+  } else {
+    timeOfDay = 'night';
+  }
+
+  const guideVariants = {
+    morning: [
+      "Good morning, traveler. Where are we heading today?",
+      "Good morning, traveler. Where shall I guide you?",
+      "Ready for your next adventure, traveler?",
+      "What destination shall we map out today, traveler?",
+    ],
+    afternoon: [
+      "Good afternoon, traveler. Where should we explore?",
+      "Where shall I guide you next, traveler?",
+      "Ready to discover a new destination, traveler?",
+      "Good afternoon, traveler. Tell me your dream trip.",
+    ],
+    evening: [
+      "Good evening, traveler. Where to next?",
+      "Where shall I guide you on your next journey, traveler?",
+      "Good evening, traveler. Let's plan your getaway.",
+      "What destination is calling you tonight, traveler?",
+    ],
+    night: [
+      "Where to next, fellow traveler?",
+      "Dreaming of your next getaway, traveler?",
+      "Where shall I guide you on your next journey?",
+      "Tell me your dream trip, traveler.",
+    ],
+  };
+
+  const list = guideVariants[timeOfDay] || guideVariants.afternoon;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 export default function App() {
-  // User profile state with local persistence
-  const [userName, setUserName] = useState(() => {
-    return localStorage.getItem('trip-planner-username') || '';
-  });
-
-  const [travelerType, setTravelerType] = useState(() => {
-    return localStorage.getItem('trip-planner-traveler-type') || 'solo';
-  });
-
-  // Automatically open the onboarding profile dialog on first visit if not saved
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(() => {
-    return !localStorage.getItem('trip-planner-username');
-  });
+  // Evaluated once per app load (on mount)
+  const initialGreeting = useMemo(() => getGuideGreeting(), []);
 
   const [prompt, setPrompt] = useState(() => {
     return localStorage.getItem('trip-planner-saved-prompt') || '';
@@ -66,30 +102,8 @@ export default function App() {
     localStorage.setItem('trip-planner-saved-prompt', prompt);
   }, [prompt]);
 
-  useEffect(() => {
-    if (userName) {
-      localStorage.setItem('trip-planner-username', userName);
-    }
-  }, [userName]);
-
-  useEffect(() => {
-    localStorage.setItem('trip-planner-traveler-type', travelerType);
-  }, [travelerType]);
-
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
-
-  const handleSaveProfile = ({ name, travelerType: selectedType }) => {
-    setUserName(name);
-    setTravelerType(selectedType);
-    localStorage.setItem('trip-planner-username', name);
-    localStorage.setItem('trip-planner-traveler-type', selectedType);
-    setIsProfileModalOpen(false);
-  };
-
-  const handleToggleTravelerType = () => {
-    setTravelerType((prev) => (prev === 'solo' ? 'group' : 'solo'));
   };
 
   // Active in-flight request abort controller & stale request guard
@@ -134,10 +148,7 @@ export default function App() {
     setError(null);
 
     try {
-      // Include traveler type context in the prompt for even smarter AI plans
-      const contextualPrompt = `[Traveler Type: ${travelerType === 'group' ? 'Group / Friends' : 'Solo Traveler'}] ${targetPrompt}`;
-
-      const rawData = await generateItinerary(contextualPrompt, {
+      const rawData = await generateItinerary(targetPrompt.trim(), {
         signal: controller.signal,
         timeoutMs: 50000,
       });
@@ -148,17 +159,23 @@ export default function App() {
       // Defensive validation with Zod schema
       const validated = validateItinerary(rawData);
       if (!validated) {
-        throw new Error("Received malformed or unexpected data structure from the AI model.");
+        const shapeErr = new Error("The AI response was missing essential itinerary fields.");
+        shapeErr.type = "INVALID_SHAPE";
+        throw shapeErr;
       }
 
       setTripData(validated);
     } catch (err) {
       if (currentId !== requestId.current) return;
-      if (err.name === 'AbortError') {
+      if (err.name === 'AbortError' || err.type === 'ABORT_ERROR') {
         // User intentionally cancelled the request
         return;
       }
-      setError(err.message || "Failed to generate itinerary. Please try again.");
+      setError({
+        message: err.message || "Failed to generate itinerary. Please try again.",
+        type: err.type || "SERVER_ERROR",
+        details: err.details || null,
+      });
     } finally {
       if (currentId === requestId.current) {
         setLoading(false);
@@ -192,33 +209,18 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      {/* 1. Navbar */}
+      {/* 1. Minimal Header */}
       <header className="navbar">
         <div className="nav-left">
           <div className="logo-badge">
             <img src={logoImg} alt="YourTripGuide" className="navbar-logo-img" />
             <span className="logo-text">YourTripGuide</span>
           </div>
-          <button
-            className="nav-greeting-pill"
-            onClick={() => setIsProfileModalOpen(true)}
-            type="button"
-            title="Click to edit your name and traveler type"
-          >
-            <span className="greeting-dot"></span>
-            <span>
-              Welcome, <strong>{userName || 'Traveler'}</strong>
-              <span className="nav-type-tag">{travelerType === 'group' ? '👥 Group' : '🎒 Solo'}</span>
-              <span className="edit-pen-icon">✏️</span>
-            </span>
-          </button>
         </div>
 
         <div className="nav-right">
           <nav className="nav-links">
             <a href="#home" className="nav-link active">Home</a>
-            <a href="#deals" className="nav-link">Deals</a>
-            <a href="#guide" className="nav-link">Guides</a>
             <a href="#about" className="nav-link">About</a>
           </nav>
 
@@ -245,49 +247,69 @@ export default function App() {
         </div>
       </header>
 
-      {/* 2. Hero Section */}
-      <section className="hero-container" id="home">
-        <div className="hero-logo-showcase">
-          <img src={logoImg} alt="YourTripGuide" className="hero-logo-img" />
+      {/* 2. Main Content Area */}
+      {!tripData ? (
+        /* Landing State: Centered, single-column, calm ChatGPT/Claude style */
+        <div className="landing-layout-wrapper" id="home">
+          <section className="landing-centered-hero">
+            {/* Interactive Logo */}
+            <div className="hero-logo-showcase">
+              <img src={logoImg} alt="YourTripGuide" className="hero-logo-img" />
+            </div>
+
+            {/* Interactive Guide Greeting */}
+            <h1 className="chat-greeting-title">{initialGreeting}</h1>
+
+            {/* Chat Composer with 4 Suggestion Chips */}
+            <PromptInput
+              prompt={prompt}
+              setPrompt={setPrompt}
+              onSubmit={() => handlePlanTrip()}
+              onCancel={handleCancelRequest}
+              loading={loading}
+              isCompact={false}
+            />
+          </section>
+
+          {/* Shared Error State Banner */}
+          <ErrorState error={error} onRetry={() => handlePlanTrip()} />
+
+          {/* Suggested Inspiration Section */}
+          <ResultView
+            tripData={null}
+            loading={loading}
+            onSelectDay={(idx) => setActiveDayIndex(idx)}
+            onResetTrip={handleResetTrip}
+            onSelectSuggestedPlan={(planPrompt) => handlePlanTrip(planPrompt)}
+          />
         </div>
+      ) : (
+        /* Generated State: Compact top composer and full itinerary cards below */
+        <div className="generated-layout-wrapper" id="home">
+          <div className="compact-top-bar">
+            <PromptInput
+              prompt={prompt}
+              setPrompt={setPrompt}
+              onSubmit={() => handlePlanTrip()}
+              onCancel={handleCancelRequest}
+              loading={loading}
+              isCompact={true}
+            />
+          </div>
 
-        <div className="hero-badge">
-          <span className="sparkle-icon">✨</span> AI-Powered Travel Itinerary Builder
+          <ErrorState error={error} onRetry={() => handlePlanTrip()} />
+
+          <ResultView
+            tripData={tripData}
+            loading={loading}
+            onSelectDay={(idx) => setActiveDayIndex(idx)}
+            onResetTrip={handleResetTrip}
+            onSelectSuggestedPlan={(planPrompt) => handlePlanTrip(planPrompt)}
+          />
         </div>
+      )}
 
-        <h1 className="hero-heading">
-          Where would you like to <span className="gradient-text">explore next?</span>
-        </h1>
-        <p className="hero-subtext">
-          Describe your dream getaway and let AI build your day-by-day custom schedule.
-        </p>
-
-        {/* Free-form Input Component */}
-        <PromptInput
-          prompt={prompt}
-          setPrompt={setPrompt}
-          travelerType={travelerType}
-          onToggleTravelerType={handleToggleTravelerType}
-          onSubmit={() => handlePlanTrip()}
-          onCancel={handleCancelRequest}
-          loading={loading}
-        />
-      </section>
-
-      {/* Shared Error State Banner */}
-      <ErrorState error={error} onRetry={() => handlePlanTrip()} />
-
-      {/* 3. Results / Suggested Section */}
-      <ResultView
-        tripData={tripData}
-        loading={loading}
-        travelerType={travelerType}
-        onSelectDay={(idx) => setActiveDayIndex(idx)}
-        onResetTrip={handleResetTrip}
-        onSelectSuggestedPlan={(planPrompt) => handlePlanTrip(planPrompt)}
-      />
-
-      {/* 4. Interactive Day Modal (Expand / Reorder / Delete Stops) */}
+      {/* 3. Interactive Day Modal */}
       {activeDayIndex !== null && tripData?.itinerary?.[activeDayIndex] && (
         <DayDetailModal
           day={tripData.itinerary[activeDayIndex]}
@@ -298,16 +320,6 @@ export default function App() {
           onUpdateStops={handleUpdateStops}
         />
       )}
-
-      {/* 5. User Profile / Traveler Type Onboarding Dialog */}
-      <UserProfileModal
-        isOpen={isProfileModalOpen}
-        initialName={userName}
-        initialTravelerType={travelerType}
-        onSave={handleSaveProfile}
-        onClose={() => setIsProfileModalOpen(false)}
-        canClose={Boolean(userName)}
-      />
 
       {/* Footer */}
       <footer className="app-footer">

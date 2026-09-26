@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { DayMapView } from './DayMapView';
 
 export function DayDetailModal({ day, dayIndex, totalDays, destination, onClose, onUpdateStops }) {
   const [copied, setCopied] = useState(false);
+  const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'map'
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -64,19 +66,37 @@ export function DayDetailModal({ day, dayIndex, totalDays, destination, onClose,
           </button>
         </div>
 
-        {/* Modal Sub-bar */}
+        {/* Modal Sub-bar with View Tabs */}
         <div className="modal-subbar">
-          <span className="modal-stop-count">
-            <strong>{day.stops.length}</strong> {day.stops.length === 1 ? 'Stop' : 'Stops'} Scheduled
-          </span>
+          <div className="modal-view-tabs">
+            <button
+              className={`view-tab-btn ${viewMode === 'timeline' ? 'active' : ''}`}
+              onClick={() => setViewMode('timeline')}
+            >
+              📋 Timeline ({day.stops.length})
+            </button>
+            <button
+              className={`view-tab-btn ${viewMode === 'map' ? 'active' : ''}`}
+              onClick={() => setViewMode('map')}
+            >
+              🗺️ Map Route
+            </button>
+          </div>
           <button className="btn-chip" onClick={handleCopyDayPlan}>
             {copied ? '✓ Copied Day Plan!' : '📋 Copy Day Summary'}
           </button>
         </div>
 
-        {/* Modal Body / Stops Timeline */}
+        {/* Modal Body / View Switch */}
         <div className="modal-body">
-          {day.stops.length === 0 ? (
+          {viewMode === 'map' ? (
+            <DayMapView
+              stops={day.stops}
+              destination={destination}
+              dayNumber={day.day_number}
+              theme={day.theme}
+            />
+          ) : day.stops.length === 0 ? (
             <div className="modal-empty-state">
               <span className="empty-icon">🗺️</span>
               <p className="empty-text">No stops left for this day.</p>

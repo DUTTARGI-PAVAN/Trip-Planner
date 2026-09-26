@@ -51,15 +51,23 @@ export async function generateItinerary(prompt, options = {}) {
 
     if (!response.ok) {
       let errorMessage = `Server error (${response.status})`;
+      let errorType = 'SERVER_ERROR';
+      let errorDetails = null;
+
       try {
         const errorData = await response.json();
         if (errorData?.error) errorMessage = errorData.error;
+        if (errorData?.type) errorType = errorData.type;
+        if (errorData?.details) errorDetails = errorData.details;
       } catch {
         // Fallback to HTTP status text if JSON parsing fails
         if (response.statusText) errorMessage = `${response.statusText} (${response.status})`;
       }
+
       const err = new Error(errorMessage);
       err.status = response.status;
+      err.type = errorType;
+      err.details = errorDetails;
       throw err;
     }
 
@@ -70,12 +78,23 @@ export async function generateItinerary(prompt, options = {}) {
       if (externalSignal?.aborted) {
         const abortErr = new Error('Request cancelled by user.');
         abortErr.name = 'AbortError';
+        abortErr.type = 'ABORT_ERROR';
         throw abortErr;
       }
       const timeoutErr = new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds. Please try again.`);
       timeoutErr.name = 'TimeoutError';
+      timeoutErr.type = 'TIMEOUT_ERROR';
       throw timeoutErr;
     }
+
+    // Classify browser network connection failures (e.g., server offline, CORS network fail)
+    if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+      const netErr = new Error('Unable to connect to the backend server. Please check your internet connection or verify the server is running at http://localhost:3000.');
+      netErr.name = 'NetworkError';
+      netErr.type = 'NETWORK_ERROR';
+      throw netErr;
+    }
+
     throw err;
   } finally {
     clearTimeout(timeoutId);

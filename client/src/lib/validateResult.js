@@ -21,6 +21,8 @@ export const StopSchema = z.object({
     }
     return 'sightseeing';
   }),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
 });
 
 /**

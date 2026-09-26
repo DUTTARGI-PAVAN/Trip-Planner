@@ -3,21 +3,18 @@ import React, { useState, useEffect, useRef } from 'react';
 export function UserProfileModal({
   isOpen,
   initialName,
-  initialTravelerType,
   onSave,
   onClose,
   canClose = true,
 }) {
   const [name, setName] = useState(initialName || '');
-  const [travelerType, setTravelerType] = useState(initialTravelerType || 'solo');
   const [error, setError] = useState('');
   const inputRef = useRef(null);
 
   useEffect(() => {
     setName(initialName || '');
-    setTravelerType(initialTravelerType || 'solo');
     setError('');
-  }, [initialName, initialTravelerType, isOpen]);
+  }, [initialName, isOpen]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -46,7 +43,7 @@ export function UserProfileModal({
       setError('Please enter your name to personalize your experience.');
       return;
     }
-    onSave({ name: trimmed, travelerType });
+    onSave({ name: trimmed });
   };
 
   return (
@@ -68,7 +65,7 @@ export function UserProfileModal({
               Welcome to YourTripGuide
             </h2>
             <p className="profile-modal-subtitle">
-              Tell us a bit about yourself so we can tailor smart itinerary ideas just for you.
+              Enter your name to personalize your travel planning experience.
             </p>
           </div>
           {canClose && onClose && (
@@ -88,7 +85,7 @@ export function UserProfileModal({
           {/* Name Field */}
           <div className="form-group">
             <label htmlFor="user-fullname" className="form-label">
-              👤 Your Full Name
+              👤 Your Name
             </label>
             <input
               id="user-fullname"
@@ -104,50 +101,6 @@ export function UserProfileModal({
               maxLength={40}
             />
             {error && <p className="form-error-msg">{error}</p>}
-          </div>
-
-          {/* Traveler Type Selection */}
-          <div className="form-group">
-            <label className="form-label">
-              🧭 How do you usually travel?
-            </label>
-            <div className="traveler-type-grid">
-              {/* Solo Option */}
-              <button
-                type="button"
-                className={`traveler-type-card ${travelerType === 'solo' ? 'active' : ''}`}
-                onClick={() => setTravelerType('solo')}
-              >
-                <div className="traveler-type-icon">🎒</div>
-                <div className="traveler-type-content">
-                  <div className="traveler-type-title">
-                    <span>Solo Traveler</span>
-                    {travelerType === 'solo' && <span className="selection-checkmark">✓</span>}
-                  </div>
-                  <p className="traveler-type-desc">
-                    Self-paced exploring, cozy cafes, scenic walks, photography & local gems.
-                  </p>
-                </div>
-              </button>
-
-              {/* Group Option */}
-              <button
-                type="button"
-                className={`traveler-type-card ${travelerType === 'group' ? 'active' : ''}`}
-                onClick={() => setTravelerType('group')}
-              >
-                <div className="traveler-type-icon">👥</div>
-                <div className="traveler-type-content">
-                  <div className="traveler-type-title">
-                    <span>Group Traveler</span>
-                    {travelerType === 'group' && <span className="selection-checkmark">✓</span>}
-                  </div>
-                  <p className="traveler-type-desc">
-                    Friends, family, or couples sharing feasts, villas, fun activities & road trips.
-                  </p>
-                </div>
-              </button>
-            </div>
           </div>
 
           {/* Actions */}

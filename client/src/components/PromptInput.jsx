@@ -1,34 +1,25 @@
 import React from 'react';
 
-// Tailored suggestions categorized by traveler type
-const SUGGESTIONS = {
-  solo: [
-    { label: "📸 Kyoto Solo Photography (4 Days)", text: "4 days solo wandering in Kyoto exploring quiet morning shrines, bamboo groves, and hidden ramen bars" },
-    { label: "🏖️ Bali Solo Backpacker & Cafes (5 Days)", text: "5 days solo retreat in Ubud and Canggu with yoga classes, co-working cafes, and scenic waterfalls" },
-    { label: "🏔️ Swiss Alps Solo Hike (3 Days)", text: "3 days solo trekking in Interlaken and Lauterbrunnen with mountain hostels, fondue, and panoramic trails" },
-    { label: "🎨 Paris Museums & Culture (3 Days)", text: "3 days solo cultural journey in Paris visiting the Louvre, Montmartre art studios, and historic bakeries" },
-  ],
-  group: [
-    { label: "🏖️ Goa Beach Villa & Party (4 Days)", text: "4 days group party getaway to Goa with private beach shacks, sunset cruises, water sports, and seaside clubs" },
-    { label: "🏔️ Manali Road Trip with Friends (5 Days)", text: "5 days scenic group road trip to Manali and Solang Valley with river rafting, bonfires, and mountain cafes" },
-    { label: "🎢 Tokyo Tech & Neon Safari (5 Days)", text: "5 days group exploration in Tokyo hitting Akihabara arcades, teamLab digital art, Shibuya crossings, and izakayas" },
-    { label: "🏛️ Rome & Tuscany Wine Tour (4 Days)", text: "4 days group tour of Rome and Florence with Colosseum entry, shared pasta feasts, and vineyard tastings" },
-  ],
-};
+// Four curated popular trip suggestion chips
+const SUGGESTIONS = [
+  { label: "📸 Kyoto Temples & Bamboo (4 Days)", text: "4 days wandering in Kyoto exploring quiet morning shrines, bamboo groves, and hidden ramen bars" },
+  { label: "🏖️ Bali Retreat & Waterfalls (5 Days)", text: "5 days retreat in Ubud and Canggu with yoga classes, co-working cafes, and scenic waterfalls" },
+  { label: "🏔️ Swiss Alps Alpine Trek (3 Days)", text: "3 days trekking in Interlaken and Lauterbrunnen with mountain hostels, fondue, and panoramic trails" },
+  { label: "🎨 Paris Art & Bistros (3 Days)", text: "3 days cultural journey in Paris visiting the Louvre, Montmartre art studios, and historic bakeries" },
+];
 
 /**
- * Free-form prompt input component.
- * Supports text input, personalized suggestions (Solo vs Group),
- * Enter to submit, Shift+Enter for newlines, and request cancellation.
+ * Chat-composer style PromptInput component.
+ * Features a single elevated composer bar, quiet outline suggestion chips,
+ * Enter to submit, Shift+Enter for newlines, and loading cancellation.
  */
 export function PromptInput({
   prompt,
   setPrompt,
-  travelerType = 'solo',
-  onToggleTravelerType,
   onSubmit,
   onCancel,
   loading,
+  isCompact = false,
 }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
@@ -36,7 +27,7 @@ export function PromptInput({
         // Shift + Enter: Let browser insert a new line
         return;
       }
-      // Enter without Shift: trigger submit ("Let's Plan" action)
+      // Enter without Shift: trigger submit
       e.preventDefault();
       if (!loading && prompt.trim()) {
         onSubmit();
@@ -44,80 +35,25 @@ export function PromptInput({
     }
   };
 
-  const activeSuggestions = SUGGESTIONS[travelerType] || SUGGESTIONS.solo;
-
   return (
-    <div className="hero-card">
-      {/* Header bar above textarea with active traveler type tag */}
-      <div className="hero-card-header">
-        <div className="prompt-type-badge">
-          <span>{travelerType === 'group' ? '👥 Group Mode Ideas' : '🎒 Solo Mode Ideas'}</span>
-        </div>
-        {onToggleTravelerType && (
-          <button
-            type="button"
-            className="btn-switch-mode"
-            onClick={onToggleTravelerType}
-            title="Switch between Solo and Group ideas"
-          >
-            Switch to {travelerType === 'group' ? '🎒 Solo' : '👥 Group'}
-          </button>
-        )}
-      </div>
-
-      {/* Main Textarea */}
-      <div className="textarea-wrapper">
+    <div className={`chat-composer-container ${isCompact ? 'composer-compact' : ''}`}>
+      {/* Elevated Composer Bar */}
+      <div className="chat-composer-box">
         <textarea
-          className="hero-input"
-          placeholder={
-            travelerType === 'group'
-              ? "e.g. 4 days in Goa with 5 friends for beach parties, water sports, and sunset dinners..."
-              : "e.g. 5 days in Kyoto and Osaka exploring ancient temples, street food markets, and bamboo forests..."
-          }
+          className="chat-composer-input"
+          placeholder="Where shall I guide you, traveler? (e.g. 4 days in Rome and Florence exploring art & authentic pasta spots)"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          rows={3}
+          rows={isCompact ? 1 : 2}
           onKeyDown={handleKeyDown}
-          aria-label="Trip description prompt"
+          aria-label="Trip prompt composer"
           disabled={loading}
         />
-        <div className="textarea-shortcut-hint">
-          <span>Press <strong>Enter ↵</strong> to plan • <strong>Shift + Enter</strong> for new line</span>
-        </div>
-      </div>
 
-      {/* Dynamic Suggested Prompts based on Traveler Type */}
-      <div className="sample-prompts-container">
-        <div className="sample-header-row">
-          <span className="sample-label">
-            {travelerType === 'group' ? '👥 Ideas for Group & Friends:' : '🎒 Ideas for Solo Adventurers:'}
-          </span>
-        </div>
-        <div className="sample-chips">
-          {activeSuggestions.map((sample, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className="sample-chip"
-              onClick={() => setPrompt(sample.text)}
-              disabled={loading}
-            >
-              {sample.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Controls Bar */}
-      <div className="hero-controls">
-        <div className="controls-left">
-          <span className="prompt-guide-text">💡 Feel free to specify days, budget, or preferred activities.</span>
-        </div>
-
-        <div className="controls-right">
+        <div className="chat-composer-actions">
           {loading && onCancel && (
             <button
-              className="btn-cancel-action"
+              className="btn-composer-cancel"
               onClick={onCancel}
               type="button"
               title="Cancel generation"
@@ -127,25 +63,60 @@ export function PromptInput({
           )}
 
           <button
-            className="btn-plan-action"
+            className="btn-composer-send"
             onClick={onSubmit}
             disabled={loading || !prompt.trim()}
             type="button"
+            aria-label="Send prompt"
+            title="Generate Itinerary (Enter)"
           >
             {loading ? (
-              <>
-                <span className="spinner-icon">⏳</span>
-                <span>Creating Plan...</span>
-              </>
+              <span className="composer-spinner">⏳</span>
             ) : (
-              <>
-                <span>Let's Plan</span>
-                <span className="btn-arrow">→</span>
-              </>
+              <svg
+                className="send-icon"
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
             )}
           </button>
         </div>
       </div>
+
+      {/* Sub-row: Keyboard shortcut hint */}
+      <div className="chat-composer-meta">
+        <span className="composer-shortcut-text">
+          Press <kbd className="key-badge">Enter ↵</kbd> to plan • <kbd className="key-badge">Shift + Enter</kbd> for newline
+        </span>
+      </div>
+
+      {/* 4 Popular Suggestion Chips */}
+      {!isCompact && (
+        <div className="chat-chips-section">
+          <div className="chat-chips-grid">
+            {SUGGESTIONS.map((sample, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className="chat-outline-chip"
+                onClick={() => setPrompt(sample.text)}
+                disabled={loading}
+              >
+                <span className="chip-text">{sample.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

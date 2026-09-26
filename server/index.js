@@ -23,6 +23,8 @@ const StopSchema = z.object({
     const norm = val.toLowerCase().trim();
     return ['food', 'sightseeing', 'travel'].includes(norm) ? norm : 'sightseeing';
   }),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
 });
 
 const DaySchema = z.object({
@@ -62,6 +64,14 @@ const responseSchema = {
                 activity_type: {
                   type: SchemaType.STRING,
                   description: "Must be 'food', 'sightseeing', or 'travel'",
+                },
+                latitude: {
+                  type: SchemaType.NUMBER,
+                  description: 'Approximate latitude decimal coordinate for the location (e.g. 35.0116)',
+                },
+                longitude: {
+                  type: SchemaType.NUMBER,
+                  description: 'Approximate longitude decimal coordinate for the location (e.g. 135.7681)',
                 },
               },
               required: ['id', 'time', 'location', 'description', 'activity_type'],
@@ -144,7 +154,7 @@ app.post('/api/generate', async (req, res) => {
   ].filter(Boolean);
 
   const systemInstruction =
-    "You are an expert travel planner. Create a logical, practical daily itinerary based on the user's request. Generate unique UUIDs for every stop id.";
+    "You are an expert travel planner. Create a logical, practical daily itinerary based on the user's request. Generate unique UUIDs for every stop id. Provide accurate approximate decimal latitude and longitude coordinates (WGS84) for each stop location to enable interactive map route visualization.";
 
   let lastError = null;
   let finalResponse = null;
@@ -172,7 +182,9 @@ app.post('/api/generate', async (req, res) => {
 
         // 2. Check for empty response
         if (!responseText || !responseText.trim()) {
-          throw new Error('The AI model returned an empty text response.');
+          const emptyErr = new Error('EMPTY_OUTPUT: The AI model returned an empty text response.');
+          emptyErr.type = 'EMPTY_OUTPUT';
+          throw emptyErr;
         }
 
       // 3. Attempt JSON parse
@@ -181,25 +193,39 @@ app.post('/api/generate', async (req, res) => {
         parsedJson = JSON.parse(responseText);
       } catch (parseErr) {
         console.warn(`JSON parse failed on ${modelName}, attempting self-repair:`, parseErr.message);
-        // Self-repair loop for malformed JSON
-        parsedJson = await attemptSelfRepair(
-          model,
-          responseText,
-          `JSON Parse Error: ${parseErr.message}`,
-          prompt
-        );
+        try {
+          // Self-repair loop for malformed JSON
+          parsedJson = await attemptSelfRepair(
+            model,
+            responseText,
+            `JSON Parse Error: ${parseErr.message}`,
+            prompt
+          );
+        } catch (repairErr) {
+          const malformedErr = new Error(`MALFORMED_JSON: Failed to parse AI output as JSON: ${parseErr.message}`);
+          malformedErr.type = 'MALFORMED_JSON';
+          malformedErr.details = parseErr.message;
+          throw malformedErr;
+        }
       }
 
       // 4. Validate schema with Zod
       const validationResult = ItinerarySchema.safeParse(parsedJson);
       if (!validationResult.success) {
         console.warn(`Schema validation failed on ${modelName}, attempting self-repair:`, validationResult.error.issues);
-        parsedJson = await attemptSelfRepair(
-          model,
-          JSON.stringify(parsedJson),
-          `Schema Issues: ${JSON.stringify(validationResult.error.issues)}`,
-          prompt
-        );
+        try {
+          parsedJson = await attemptSelfRepair(
+            model,
+            JSON.stringify(parsedJson),
+            `Schema Issues: ${JSON.stringify(validationResult.error.issues)}`,
+            prompt
+          );
+        } catch (repairErr) {
+          const shapeErr = new Error(`INVALID_SHAPE: AI output missing required schema fields.`);
+          shapeErr.type = 'INVALID_SHAPE';
+          shapeErr.details = JSON.stringify(validationResult.error.issues);
+          throw shapeErr;
+        }
       } else {
         parsedJson = validationResult.data;
       }
@@ -226,25 +252,41 @@ app.post('/api/generate', async (req, res) => {
 
   const errorMsg = lastError?.message || 'Failed to generate itinerary. Please try again.';
 
-  if (lastError?.code === 'ETIMEDOUT') {
+  if (lastError?.code === 'ETIMEDOUT' || lastError?.type === 'TIMEOUT_ERROR' || errorMsg.includes('timed out')) {
     return res.status(504).json({
       error: 'The AI request timed out. Please try a shorter request or try again shortly.',
       type: 'TIMEOUT_ERROR',
     });
   }
 
-  if (errorMsg.includes('503') || errorMsg.includes('high demand') || errorMsg.includes('Service Unavailable')) {
+  if (errorMsg.includes('503') || errorMsg.includes('high demand') || errorMsg.includes('Service Unavailable') || errorMsg.includes('RESOURCE_EXHAUSTED')) {
     return res.status(503).json({
       error: 'The AI service is currently experiencing high demand. Please try again in a few moments.',
       type: 'SERVICE_UNAVAILABLE',
     });
   }
 
-  if (errorMsg.includes('empty text') || errorMsg.includes('JSON') || errorMsg.includes('schema validation')) {
+  if (lastError?.type === 'EMPTY_OUTPUT' || errorMsg.includes('EMPTY_OUTPUT') || errorMsg.includes('empty text') || errorMsg.includes('empty response')) {
     return res.status(422).json({
-      error: 'The AI returned an invalid or malformed itinerary format. Please retry your request.',
-      type: 'MALFORMED_OUTPUT',
-      details: errorMsg,
+      error: 'The AI model returned an empty response. Please try rephrasing your prompt or click Try Again.',
+      type: 'EMPTY_OUTPUT',
+      details: lastError?.details || errorMsg,
+    });
+  }
+
+  if (lastError?.type === 'MALFORMED_JSON' || errorMsg.includes('MALFORMED_JSON') || errorMsg.includes('JSON')) {
+    return res.status(422).json({
+      error: 'The AI generated malformed JSON output that could not be parsed.',
+      type: 'MALFORMED_JSON',
+      details: lastError?.details || errorMsg,
+    });
+  }
+
+  if (lastError?.type === 'INVALID_SHAPE' || errorMsg.includes('INVALID_SHAPE') || errorMsg.includes('schema validation') || errorMsg.includes('Schema Issues')) {
+    return res.status(422).json({
+      error: 'The AI output was missing required itinerary fields (such as days, themes, or scheduled stops).',
+      type: 'INVALID_SHAPE',
+      details: lastError?.details || errorMsg,
     });
   }
 

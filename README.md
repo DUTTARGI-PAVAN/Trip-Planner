@@ -8,10 +8,9 @@ A modern, resilient full-stack React application that transforms free-form trave
 
 ## 🚀 Key Features
 
-### 1. Free-Form Prompting & Traveler Persona
+### 1. Free-Form Prompting & Quick Idea Inspiration
 - **Natural Language Input**: Type any destination, duration, vibe, or budget (e.g., *"4 days in Kyoto and Osaka exploring ancient temples and street food markets"*).
-- **Personalized Traveler Mode**: Toggle between **Solo Traveler** and **Group / Friends** personas. The application injects traveler context into generation prompts and displays tailored suggestion chips.
-- **Onboarding & User Profile**: Modal to customize traveler name and travel style, accessible directly from the interactive navbar pill.
+- **Curated Idea Chips**: One-click quick suggestion chips to instantly populate rich travel ideas.
 
 ### 2. Multi-Tier AI Generation & Automated Self-Repair
 - **Strict Structured Outputs**: Utilizes Google Gemini models configured with `responseMimeType: 'application/json'` and `responseSchema` to enforce type safety at generation time.
@@ -25,12 +24,14 @@ A modern, resilient full-stack React application that transforms free-form trave
 - **Stale Request Discarding**: Ref-based `requestId` tracking ensures slow or out-of-order responses from superseded requests are discarded without altering the UI state.
 
 ### 4. Client-Side State Persistence
-- **Local State Sync**: Generated itineraries, current prompt draft, user profile persona, and dark/light theme preferences are automatically synchronized to `localStorage`.
+- **Local State Sync**: Generated itineraries, current prompt draft, and dark/light theme preferences are automatically synchronized to `localStorage`.
 - **Session Recovery**: Users can reload or revisit the application and immediately resume reviewing or editing their saved itinerary without re-generating.
 - **Clean Reset**: One-click "Reset Trip" resets current state and clears stored itinerary data.
 
-### 5. Interactive Timeline & Stop Management
-- **Modal Day Inspector**: Expand any day card into a detailed interactive timeline modal.
+### 5. Interactive Timeline, Stop Management & Map View
+- **Modal Day Inspector**: Expand any day card into a detailed interactive modal featuring both **Timeline** and **Map Route** views.
+- **Interactive Leaflet Route Map**: Renders an OpenStreetMap view with custom numbered markers, activity icons (Sightseeing, Dining, Transit), and route polyline sequences using approximate WGS84 coordinates from Gemini.
+- **Stop Focus & External Search**: Click any marker or stop card to inspect details and open instant directions in Google Maps.
 - **Reorder Stops**: Move itinerary activities up or down (↑ / ↓) with immediate React state updates.
 - **Delete Stops**: Remove unwanted stops with empty-state resilience.
 - **Share & Export**: Single-click copy of formatted day plans to the clipboard for messaging or travel notes.
@@ -74,9 +75,8 @@ Trip-Planner/
 │   │   │   ├── DayDetailModal.jsx   # Interactive timeline: view, reorder & delete stops
 │   │   │   ├── ErrorState.jsx       # Shared error banner with retry handler
 │   │   │   ├── LoadingState.jsx     # Animated skeleton cards during generation
-│   │   │   ├── PromptInput.jsx      # Free-form input, Solo/Group toggle, suggestion chips
-│   │   │   ├── ResultView.jsx       # Itinerary grid, overview banner, quick ideas
-│   │   │   └── UserProfileModal.jsx # Traveler name and persona profile dialog
+│   │   │   ├── PromptInput.jsx      # Chat composer with quiet suggestion chips
+│   │   │   └── ResultView.jsx       # Itinerary grid, overview banner, quick ideas
 │   │   ├── lib/
 │   │   │   ├── api.js               # Proxy API client with AbortSignal & timeout support
 │   │   │   └── validateResult.js    # Client-side Zod schema validation
@@ -97,15 +97,16 @@ Trip-Planner/
 
 ## 🛡️ Error Handling & Defensive Strategy
 
-| Failure Mode | Detection & Mitigation |
-| :--- | :--- |
-| **Malformed JSON** | Backend catches JSON parse errors and dispatches an automated self-repair prompt to the LLM. |
-| **Schema Inconsistency** | Backend validates with Zod (`ItinerarySchema`); if fields are missing or invalid, self-repair corrects the structure. Frontend performs a secondary Zod pass before state updates. |
-| **Model Outage / Rate Limit** | Multi-model fallback (`gemini-3.5-flash-lite` → `gemini-3.8-flash` → `gemini-3.7-flash`) with retry backoff; returns classified HTTP `503` if upstream is unavailable. |
-| **Hanging / Slow Request** | Backend enforces a 35s timeout per attempt; client enforces a 50s total timeout (`TimeoutError`). |
-| **User Abort** | Client `AbortController` triggers immediate teardown of active fetch requests without error alerts (`AbortError`). |
-| **Stale Responses** | Ref-based `requestId` tracking ensures slow asynchronous returns from previous queries do not overwrite current state. |
-| **Data Recovery** | `localStorage` caching ensures user plans survive accidental page refreshes. |
+| Failure Mode | Detection & Backend Handling | UI Presentation & Action |
+| :--- | :--- | :--- |
+| **Malformed JSON** (`MALFORMED_JSON`) | Catches JSON parse error; triggers automated LLM self-repair pass. If repair fails, returns HTTP 422 with `MALFORMED_JSON`. | 🧩 **Malformed AI Output** banner + parse error badge + prompt rephrase suggestion. |
+| **Schema Inconsistency / Wrong Shape** (`INVALID_SHAPE`) | Zod `ItinerarySchema` validation failure triggers automated LLM schema self-repair; frontend secondary Zod pass guards state. | 📐 **Incomplete Itinerary Structure** banner + schema mismatch badge + duration/destination clarity tip. |
+| **Empty AI Response** (`EMPTY_OUTPUT`) | Detects zero/empty response; attempts fallback model. | 📭 **Empty AI Output** banner + empty response badge + stream interruption retry. |
+| **Generation Timeout** (`TIMEOUT_ERROR`) | Server-side 35s timeout (`withTimeout`) + client-side 50s abort controller. | ⏱️ **Request Timed Out** banner + timeout badge + shorter itinerary duration tip. |
+| **Network Failure** (`NETWORK_ERROR`) | Frontend fetch catch handler classifies network/CORS/offline disconnection. | 📡 **Network Connection Failed** banner + server check tip (`npm run dev`). |
+| **Service Overload** (`SERVICE_UNAVAILABLE`) | Catches upstream rate-limiting (429/503/RESOURCE_EXHAUSTED); cycles fallback models. | 🚦 **AI Service Busy** banner + 503 badge + wait & retry action. |
+| **User Cancellation** (`ABORT_ERROR`) | `AbortController` cancel button terminates in-flight request cleanly without raising error toasts. | UI immediately resets loading state smoothly. |
+| **Stale Async Returns** | Ref-based `requestId` tracking discards superseded asynchronous responses. | Prevents older out-of-order requests from overwriting current state. |
 
 ---
 
